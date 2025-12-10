@@ -83,6 +83,76 @@ class Node:
             node.children[i] = read8bytes() #read the 8 bytes and store it into the list of children (0 in all slots means its a leaf node)
         return node #return the list now filled with the node values
 
+class BTreeFile:
+    def __init__(self, path):
+        self.path = path # we need to keep the path available to write
+        # openInrw() will make it writable to, not just readable.
+        self.fp = None  #There might be none if there is nothing to handle too
+        self.root = 0 # block id of the B-tree root node. if it is 0, then it's empty.
+        self.next_block = 1  #block id of the next unused block; the first allocated data block is 1 after the header
+        self.node_cache = OrderedDict() # OrderedDict mapping block_id is the node. Keeps the most recent at the end
+
+    # simple file operations
+    def openInrw(self):
+        if self.fp is None:
+            self.fp = open(self.path, 'r+b') #open the file path in read and write mode
+
+    def openInro(self): #read only opening
+        if self.fp is None:
+            self.fp = open(self.path, 'rb')#simply opens it only in read only mode
+
+    def close(self): #this will close the file if it is write mode for the most part, but I can use it for read only 
+        if self.fp:
+            self.fp.close()
+            self.fp = None #resets it after closing
+            
+    def _block_offset(self, block_id)
+        return block_id * byte_blocks
+
+    def readsHeader(self, must_exist=True):
+        if not os.path.exists(self.path):
+            if must_exist:
+                raise FileNotFoundError(f"{self.path} does not exist") #cannot find the file current
+            else:
+                return #couldn't find it, even if it does exist
+
+        with open(self.path, 'rb') as f: #opens it in a read mode
+            data = f.read(byte_blocks) #rreads the data currently on the file
+            if len(data) < 24: #this is the wrong kind of index file if the length is less then 24 bytes
+                raise ValueError("Index file header too small or invalid")# header does not have our correct information
+            magic = data[0:8] #magic number is in the first 8 bytes
+            if magic != magic_number: #if they don't match up, not the right kind of index file
+                raise ValueError("Not a valid index file (wrong magic header)")
+            self.root = bytes_to_int(data[8:16]) #gets the root from these bytes (next bytes after magic number)
+            self.next_block = bytes_to_int(data[16:24]) #gets the next block id from the bytes after the root id
+
+    def writesHeader(self):
+        self.openInrw() #opens it in the read write mode this time
+        # build header buffer
+        buf = bytearray()
+        buf += magic_number # The first 8 bits is the magic number
+        buf += int_to_bytes(self.root) # Next 8 is the correct root id
+        buf += int_to_bytes(self.next_block) # Final 8 is the next block
+        # error handling
+        if len(buf) > byte_blocks:
+            raise RuntimeError("Header serialization exceeded block size")
+        buf += bytes(byte_blocks - len(buf)) #adjust buffer to the remaining length
+        self.fp.seek(self._block_offset(0)) # We need to write from block 0, since this is the header
+        self.fp.write(buf) #writes it
+        self.fp.flush() # flush so changes last
+
+    def validate_header(self):
+        self.readsHeader(must_exist=True) #makes sure the header is still correct and has the magic number
+
+    def allocate_node(self):
+        new_id = self.next_block #sets up the next node with the next block available
+        self.next_block += 1 #increment for the next block
+        node = Node(block_id=new_id) #makes a new node for what will happen next
+        self.write_node(node) # write node out and put it into the cache
+        self.writesHeader()# modify header so we can update next block
+        return node
+
+
 def usage_and_exit():
     print("Usage:")
     print("  project3.py create <indexfile>")
