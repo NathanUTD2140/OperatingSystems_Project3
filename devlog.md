@@ -15,3 +15,6 @@ I didn't really account for making a node in my program, but I realized that I p
 
 ## 1:36pm 12/10/2025
 After a bit of research, it turns out this is actually able to be made, but we need to be careful about how we write and read to the file. Therefore, I have made read only functions, so when operations like print are given, it cannot modify the file. It is also able to modify the header by reading the first 24 bits and validates if this is the correct kind of file. We will have to deal with cache next. This will also help us deal with writing the nodes and disk management.  
+
+## 2:07pm 12/10/2025
+This creates and reads nodes. I will make the B-Tree operations next, as this will be where the file creation and general command operations will operate in. This part was pretty simple, but this one might take me a while. 
