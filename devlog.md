@@ -18,3 +18,6 @@ After a bit of research, it turns out this is actually able to be made, but we n
 
 ## 2:07pm 12/10/2025
 This creates and reads nodes. I will make the B-Tree operations next, as this will be where the file creation and general command operations will operate in. This part was pretty simple, but this one might take me a while. 
+
+## 3:39pm 12/10/2025 
+Having to insert the nodes was very complicated and needed far more logic then I could have guessed. I didn't really think about trying to split it, so when I thought about all the cases, I realized that I needed to be able to split it. It required some research on my part to fully understand how I can split them apart. The root case and inserting on a non full was far more straightforward. Creating the file and searching through it was far simpler in comparison. I believe that the next steps is to make the other commands, hopefully they will be simpler. Going to take a break for now. 
