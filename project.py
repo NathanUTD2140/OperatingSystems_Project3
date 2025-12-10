@@ -152,6 +152,48 @@ class BTreeFile:
         self.writesHeader()# modify header so we can update next block
         return node
 
+# Node cache and creation
+
+    def _cache_put(self, node):
+        bid = node.block_id #puts the node current id as the this one
+        # move existing entry to the end (mark as most-recent)
+        if bid in self.node_cache:
+            del self.node_cache[bid] #puts them out
+        self.node_cache[bid] = node
+        # evict if there are more then 3 nodes
+        while len(self.node_cache) > 3: #if it is greater
+            old_bid, old_node = self.node_cache.popitem(last=False) #pop the item from the cache
+            self._write_node_to_disk(old_node)# write evicted node back to disk to persist any changes
+
+    def _write_node_to_disk(self, node):
+        self.openInrw() #opens it in read/write mode
+        data = node.to_bytes() #gets the data from node
+        self.fp.seek(self._block_offset(node.block_id)) #apply the offset
+        self.fp.write(data) #writes the data
+        self.fp.flush() #flush it out
+
+    def writesNode(self, node):
+        self._cache_put(node)# put node in the cache, if it gets evicted, it will get out of the cache
+        self._write_node_to_disk(node)# writes it to disk afterwards, helps function
+
+    def readsNode(self, block_id):
+        # cache fast-path
+        if block_id in self.node_cache:
+            node = self.node_cache.pop(block_id) #move it to the end of the queue aka cache
+            self.node_cache[block_id] = node# re-insert as most-recent and return
+            return node
+
+        with open(self.path, 'rb') as f: #read only mode to read from the disk
+            f.seek(self._block_offset(block_id))
+            data = f.read(byte_blocks) #read happens
+            if len(data) != byte_blocks:
+                # Handles if the file being read from has something happen to it
+                raise RuntimeError(f"Failed to read full block for block id {block_id}")
+            node = Node.from_bytes(data)# gets the data from bytes
+
+        # add node to cache (may evict other nodes)
+        self._cache_put(node) #put the node in the cache
+        return node # returns it
 
 def usage_and_exit():
     print("Usage:")
