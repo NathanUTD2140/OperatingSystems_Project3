@@ -9,3 +9,9 @@ So my main thoughts right now are, how do I make the index file? I have never wo
 
 ## 11:44am 12/10/2025
 I learned today that Python does not have switch statements, so I have to use else-if statements for the command line. I also included the function usageandexit as a way to error check the commands later potentially. 
+
+## 12:43pm 12/10/2025
+I didn't really account for making a node in my program, but I realized that I probably should, as when I was thinking about it, it would make more sense to the file more like a collection of nodes, so I figured I would make the node class first. It's a bit weird I have to initialize it according to the bit number and then fill in the values later with a static method, as they almost do the same thing, but I do need them because I have to modify the nodes eventually when the b-tree expands and needs to be adjusted. I will work on the b-tree next, which will probably take a while after this. 
+
+## 1:36pm 12/10/2025
+After a bit of research, it turns out this is actually able to be made, but we need to be careful about how we write and read to the file. Therefore, I have made read only functions, so when operations like print are given, it cannot modify the file. It is also able to modify the header by reading the first 24 bits and validates if this is the correct kind of file. We will have to deal with cache next. This will also help us deal with writing the nodes and disk management.  
