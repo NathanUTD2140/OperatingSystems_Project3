@@ -30,7 +30,7 @@ class Node:
     def __init__(self, block_id=0): #initializes it, assume it is 0 at first
         self.block_id = block_id # if a parameter is passed, we will make it
         self.parent = 0 #assume nothing at first
-        self.numOfKeys = 0 # number of keys currently in there
+        self.n = 0 # number of keys currently in there
         self.keys = [0] * max_keys # the 19 keys associated with it
         self.values = [0] * max_keys #the 19 values associated with it
         self.children = [0] * children_num #list of potential children, currently 0
@@ -42,7 +42,7 @@ class Node:
         bytebuffer = bytearray() # create a mutable byte buffer to assemble the block
         bytebuffer += int_to_bytes(self.block_id) #appending the 8 bytes for the header (big endian)
         bytebuffer += int_to_bytes(self.parent) #appends the 8 bytes for the parent of this node (will be 0 if root)
-        bytebuffer += int_to_bytes(self.numOfKeys) #appends the 8 bytes for the number of keys that will be used
+        bytebuffer += int_to_bytes(self.n) #appends the 8 bytes for the number of keys that will be used
         # keys
         for i in range(max_keys): #loop through all keys
             bytebuffer += int_to_bytes(self.keys[i]) #appends every 8 bytes for the keys associated in this part of the node
@@ -71,7 +71,7 @@ class Node:
         node = Node() #creates a new node
         node.block_id = read8bytes() #reads the first 8 bytes, will get the block_id
         node.parent = read8bytes() # parent block id from the next 8 bytes
-        node.numOfKeys = read8bytes() #reads the numbers of keys from the next 8 bytes that are in n
+        node.n = read8bytes() #reads the numbers of keys from the next 8 bytes that are in n
         # keys
         for i in range(max_keys): #in each key slot
             node.keys[i] = read8bytes() #read the 8bytes and put it in the list of keys
@@ -194,6 +194,176 @@ class BTreeFile:
         # add node to cache (may evict other nodes)
         self._cache_put(node) #put the node in the cache
         return node # returns it
+# B-tree operations
+    def create(self):
+        if os.path.exists(self.path): #the file already exists, error below
+            print("Error: file already exists", file=sys.stderr) #tell user it exists
+            sys.exit(1)
+
+        with open(self.path, 'wb') as f: #open in write mode
+            buf = bytearray()
+            buf += magic_number #put in our magic number as the header
+            buf += int_to_bytes(0)  # root id is 0 since there is a new file
+            buf += int_to_bytes(1)  # next block id will be 1
+            buf += bytes(byte_blocks - len(buf))  # pad to full block
+            f.write(buf) #write this out
+        print(f"Created index file {self.path}") #tell user it was created
+
+    def openAndLoadHeader(self):
+        if not os.path.exists(self.path):#the file already exists, error below
+            print("Error: file does not exist", file=sys.stderr) #tell user it exists
+            sys.exit(1)
+        self.readsHeader(must_exist=True) #checks the read header and it needs to be correct
+
+    def searchKey(self, key):
+        if self.root == 0: # returns nothing because it is empty!
+            return None, None
+        return self._search_in_node(self.root, key) #calls helper function and returns it
+
+    def _search_in_node(self, block_id, key):
+        node = self.readsNode(block_id) #reads the node based on the block_id given
+        # linear scan in node (since keys are stored in-order)
+        i = 0
+        while i < node.n and key > node.keys[i]: #increment i
+            i += 1
+        if i < node.n and key == node.keys[i]: #if the key matches the one passed, return the incrementation number and the node
+            return node, i
+        # not in this node; if leaf -> not found
+        if node.is_leaf():
+            return None, None #couldn't find it
+        # otherwise go to the next child
+        child_bid = node.children[i]
+        if child_bid == 0:
+            # bad tree or leaf node
+            return None, None
+        return self._search_in_node(child_bid, key) #try again in other node
+
+    def insert(self, key, value):
+        self.openAndLoadHeader() #validates header is good first
+        if self.root == 0: #this is the root node
+            # create root node
+            new_root = self.allocate_node() #make space for the root
+            new_root.parent = 0 #like in the document, 0 is the parent since it is the root
+            new_root.n = 1 #simply put it as 1 cause nothing is in here right now
+            new_root.keys[0] = key #parameter passed in
+            new_root.values[0] = value #second argument from user
+            self.root = new_root.block_id # blockid of the root
+            # persist root node and header
+            self.writesNode(new_root) #writes it
+            self.writesHeader() #makes the header
+            return #exit since we made the root node
+
+        root_node = self.readsNode(self.root) 
+        if root_node.n == max_keys: #roots full, make a new one
+            # we need to split up
+            s = self.allocate_node() #allocate the new node
+            s.parent = 0 #initialization
+            s.n = 0
+            s.children[0] = root_node.block_id
+            root_node.parent = s.block_id
+            self.writesNode(root_node)  # update old root parent pointer on disk
+            self.root = s.block_id #put it in as the new root
+            self.writesNode(s) #write the node
+            self.writesHeader()  # persist new root id
+            self._split_child(s, 0) #splits the child
+            self._insert_nonfull(s, key, value) #now put it into the nonfull one
+        else:
+            self._insert_nonfull(root_node, key, value) #otherwise just pass it to the new function
+
+    def _insert_nonfull(self, node, key, value):
+        i = node.n - 1 #sets i to the last key node index
+        if node.is_leaf(): #checks if it is a leaf or not
+            # shift keys/values rightwards to make room for new key
+            pos = node.n #inserion index equals number of keys first
+            while pos > 0 and key < node.keys[pos-1]: # if we're not at the start, key should come before the previous key
+                node.keys[pos] = node.keys[pos-1] #moves the key once to the right
+                node.values[pos] = node.values[pos-1] # moves the value to the right
+                pos -= 1 #decrement
+            node.keys[pos] = key #writes the key to the new clearly position
+            node.values[pos] = value #writes the value
+            node.n += 1 #increment the key count
+            self.writesNode(node)
+        else:
+            # find our child node to go down
+            while i >= 0 and key < node.keys[i]: #move the key left until it is greater than keys[i] or i is less then 0
+                i -= 1 #decrement
+            i += 1 #if child index is i + 1
+            child_bid = node.children[i] #read the block id of the child
+            if child_bid == 0:
+                # child pointer missing means making a new child, insert there
+                child = self.allocate_node()  #calls function
+                child.parent = node.block_id # set the parent as the first point
+                child.n = 1 #only one key after
+                child.keys[0] = key # put the key into first slot
+                child.values[0] = value #value corresponding to key
+                node.children[i] = child.block_id # link the child id to the parent's array
+                # persist child and parent updates
+                self.writesNode(child)
+                self.writesNode(node)
+                return
+            child = self.readsNode(child_bid) #read the child node
+            if child.n == max_keys: #we're full, need to split it
+                # split child so we have room to insert
+                self._split_child(node, i) #splits it into two nodes now
+                # after split, decide which of the two children to descend into
+                if key > node.keys[i]: #if it is greater
+                    i += 1 #increments the index
+                child = self.readsNode(node.children[i])
+            self._insert_nonfull(child, key, value) #recursively put more into the child node
+
+    def _split_child(self, parent_node, i):
+        y = self.readsNode(parent_node.children[i]) #read the node of the children
+        z = self.allocate_node()
+        z.parent = parent_node.block_id
+
+        # copies the last min_degree-1 keys and values to z
+        for j in range(min_degree, max_keys):  # j runs min_degree tp max_keys-1
+            z.keys[j - min_degree] = y.keys[j]
+            z.values[j - min_degree] = y.values[j]
+
+        # copies last min_degree children to z also, since it's a different number need to do this
+        for j in range(min_degree, children_num):
+            z.children[j - min_degree] = y.children[j]
+
+        # set counts
+        z.n = min_degree - 1
+        y.n = min_degree - 1
+
+        # update parent pointers of moved children (if any)
+        for j in range(min_degree):
+            cid = z.children[j]
+            if cid != 0:
+                childnode = self.readsNode(cid) #read the childnode based off the child id
+                childnode.parent = z.block_id #put z block as the paren
+                self.writesNode(childnode) #write it
+
+        # insert z as parent's child i+1, make room by shifting
+        for j in range(parent_node.n, i, -1):
+            parent_node.children[j + 1] = parent_node.children[j] #moves and shifts the child
+        parent_node.children[i + 1] = z.block_id # put the final one as z's id
+
+        # shift parent's keys/values to make space
+        for j in range(parent_node.n - 1, i - 1, -1):
+            parent_node.keys[j + 1] = parent_node.keys[j]
+            parent_node.values[j + 1] = parent_node.values[j]
+
+        # move median key from y up to parent
+        parent_node.keys[i] = y.keys[min_degree - 1]
+        parent_node.values[i] = y.values[min_degree - 1]
+        parent_node.n += 1
+
+        # clears the moved slots, makes sure it's correct
+        for j in range(min_degree - 1, max_keys):
+            y.keys[j] = 0
+            y.values[j] = 0
+        for j in range(min_degree, children_num):
+            y.children[j] = 0
+
+        # writes them to the disk
+        self.writesNode(y) 
+        self.writesNode(z)
+        self.writesNode(parent_node)
+
 
 def usage_and_exit():
     print("Usage:")
