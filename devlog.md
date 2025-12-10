@@ -7,5 +7,5 @@ This project involves using the command line to make and manipulate index files.
 ## 11:17am 12/10/2025
 So my main thoughts right now are, how do I make the index file? I have never worked with these kinds of files before this, so I will try my best to research it and learn about them. Other then that, my basic idea right now is to handle the command line arguments, and then make universal variables that can help with my program running. I will implement a function also that makes integers to bytes like described in the program, and vice versa, as this will make it smoother once it does happen. The goal for right now is try to make the index file work. 
 
-## 11:17am 12/10/2025
+## 11:44am 12/10/2025
 I learned today that Python does not have switch statements, so I have to use else-if statements for the command line. I also included the function usageandexit as a way to error check the commands later potentially. 
