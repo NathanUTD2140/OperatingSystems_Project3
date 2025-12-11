@@ -33,3 +33,6 @@ First, the inorder transversal was made based off the regular btree operations. 
 
 ## 9:22pm 12/10/2025
 The .csv files are honestly not as bad as I thought, it acts like regular file management. Make sure the file is valid or needs to be created first. Open the file if we are writing, write to the file with a writer, and keep going. If we're reading from a file, open the file, use a reader, and read the needed data, strip away excess information, and put it into the file.  
+
+## 9:58pm 12/10/2025
+This part was really repetitive, as it would just error handling, calling the file name needed, marking it as the btree, calling the function in the tree, and making sure everything is ok. I'm going to test the program now. 
