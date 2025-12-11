@@ -36,3 +36,6 @@ The .csv files are honestly not as bad as I thought, it acts like regular file m
 
 ## 9:58pm 12/10/2025
 This part was really repetitive, as it would just error handling, calling the file name needed, marking it as the btree, calling the function in the tree, and making sure everything is ok. I'm going to test the program now. 
+
+## 10:02pm 12/10/2025
+The program does not work as intended, as the print functions simply stop and says that it can no longer read the file, and stops trying to print it out or write to the output or insert correctly after a few attempts. Something is clearly going wrong with the read and writing operations of the files. I will look at these functions and hopefully fix them. 
