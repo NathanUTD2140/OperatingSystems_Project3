@@ -418,8 +418,7 @@ class BTreeFile:
                 k = int(parts[0].strip()) # Converts key if it is a string and takes away blank space
                 v = int(parts[1].strip()) # Converts value if it is a string and takes away blank space
                 self.insert(k, v) #insert this into the index 
-    
-
+        
 def usage_and_exit():
     print("Usage:")
     print("  project3.py create <indexfile>")
@@ -429,6 +428,97 @@ def usage_and_exit():
     print("  project3.py print <indexfile>")
     print("  project3.py extract <indexfile> <csvfile>")
     sys.exit(1)
+    
+def cmd_create(args): #argument for commands from the line
+    if len(args) != 2: #if there are too many or not enough arguments, exit
+        usage_and_exit()
+    path = args[1] #path is filename, which should be the second command givem
+    btf = BTreeFile(path) #create the tree with the filename
+    btf.create()
+
+def cmd_insert(args):
+    if len(args) != 4: #incorrect number of arguments
+        usage_and_exit()
+    path = args[1] #first is the filename
+    k = int(args[2]) #make sure its int, key
+    v = int(args[3]) #then value
+    btf = BTreeFile(path) #filename is the btree
+    if not os.path.exists(path):
+        print("Error: file does not exist", file=sys.stderr) #if we can't find the file name, tell the user it doesn't exist
+        sys.exit(1)
+    try:
+        btf.readsHeader() #validate header
+    except Exception as e:
+        print("Error: file is not a valid index file", file=sys.stderr) #not the correct if the header is wrong
+        sys.exit(1)
+    btf.insert(k, v) #call the function to insert key/value pair
+
+def cmd_search(args): #search command
+    if len(args) != 3: #incorrect argument
+        usage_and_exit()
+    path = args[1] #filename
+    k = int(args[2]) #make sure it's an int
+    btf = BTreeFile(path) #open the btree
+    if not os.path.exists(path): #error handling
+        print("Error: file does not exist", file=sys.stderr)
+        sys.exit(1)
+    try:
+        btf.readsHeader() #validate header
+    except Exception:
+        print("Error: file is not a valid index file", file=sys.stderr) #not the correct if the header is wrong
+        sys.exit(1)
+    node, idx = btf.searchKey(k)
+    if node is None:
+        print("Error: key not found", file=sys.stderr)
+        sys.exit(1)
+    print(f"{node.keys[idx]} {node.values[idx]}")
+
+def cmd_load(args):
+    if len(args) != 3:
+        usage_and_exit()
+    path = args[1]
+    csvfile = args[2]
+    btf = BTreeFile(path)
+    if not os.path.exists(path):
+        print("Error: file does not exist", file=sys.stderr)
+        sys.exit(1)
+    try:
+        btf.readsHeader()
+    except Exception:
+        print("Error: file is not a valid index file", file=sys.stderr)
+        sys.exit(1)
+    btf.readFromCSV(csvfile)
+
+def cmd_print(args): #print function
+    if len(args) != 2: #if there are too many or not enough arguments, exit
+        usage_and_exit()
+    path = args[1] #filename
+    btf = BTreeFile(path) #set path
+    if not os.path.exists(path): #checks to see if file exist
+        print("Error: file does not exist", file=sys.stderr)
+        sys.exit(1)
+    try:
+        btf.readsHeader() #try to do this
+    except Exception: #not the right kind of file
+        print("Error: file is not a valid index file", file=sys.stderr)
+        sys.exit(1)
+    btf.printAll() #call function to print it out
+
+def cmd_extract(args): #extrace command
+    if len(args) != 3:
+        usage_and_exit()
+    path = args[1] #arguments
+    out = args[2]
+    btf = BTreeFile(path) #btree from the file
+    if not os.path.exists(path):
+        print("Error: file does not exist", file=sys.stderr) #file doesn't exist
+        sys.exit(1)
+    try:
+        btf.readsHeader() #validate header
+    except Exception:
+        print("Error: file is not a valid index file", file=sys.stderr)
+        sys.exit(1)
+    btf.extractCSV(out) #calls the function
 
 def main():
     if len(sys.argv) < 2:
