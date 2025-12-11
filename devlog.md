@@ -42,3 +42,6 @@ The program does not work as intended, as the print functions simply stop and sa
 
 ## 10:18pm 12/10/2025
 The error is coming from the persistent file object opening only in read mode, and this causes our program to not be able to write. We need to modify the read functions to accomodate writing to the files. I will adjust it to close all operations after it is done, or open a new instance when the functions are called. 
+
+## 10:56pm 12/10/2025
+I've adjusted so it closes whenever the read&write operation is called, so that it will not linger on those. This fixes the issue of not being able to read or write after performing some operations, and all commands now work smoothly. The terminal I was working with did not match this version, so I just completely replaced it with that version in my IDE. I'm going to write the final log and readme now. 
