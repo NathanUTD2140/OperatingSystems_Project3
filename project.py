@@ -386,6 +386,38 @@ class BTreeFile:
             print(f"{k} {v}") #print the key and value
         self._inorder_traverse(self.root, printer) #traverse in order
 
+    def extractCSV(self, outpath):
+        self.openAndLoadHeader() #validate it first
+        if os.path.exists(outpath): #if the file already exists
+            print("Error: output file already exists", file=sys.stderr) #tell the user it does and stop
+            sys.exit(1)
+        with open(outpath, 'w', newline='') as csvfile: #open and make the new file
+            writer = csv.writer(csvfile) #writer to the file
+            def write_row(k, v):
+                writer.writerow([str(k), str(v)]) #write the key/value pair to the row
+            if self.root != 0:
+                self._inorder_traverse(self.root, write_row) #if we're not at the root, keep going
+
+    def readFromCSV(self, csvpath):
+        self.openAndLoadHeader()
+        if not os.path.exists(csvpath): #we need to make sure the file exist first, user needs to provide it
+            print("Error: csv file does not exist", file=sys.stderr) #tell the user
+            sys.exit(1)
+        with open(csvpath, 'r', newline='') as csvfile:
+            reader = csv.reader(csvfile) #open the reader
+            for row in reader: #iterates through the rows in the csv
+                if not row:
+                    continue #skips empty rows
+                if len(row) == 1: #check if there is an element there
+                    parts = row[0].split(',') #split it with the comma
+                else:
+                    parts = row # Assuming the elements are correct
+                if len(parts) < 2: #not the correct csv file
+                    print("Error: malformed CSV line; expected key,value", file=sys.stderr)
+                    sys.exit(1)
+                k = int(parts[0].strip()) # Converts key if it is a string and takes away blank space
+                v = int(parts[1].strip()) # Converts value if it is a string and takes away blank space
+                self.insert(k, v) #insert this into the index 
     
 
 def usage_and_exit():
