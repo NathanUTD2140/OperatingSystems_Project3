@@ -30,3 +30,6 @@ The next session will see me link the commands that the user gives in the termin
 
 ## 8:59pm 12/10/2025
 First, the inorder transversal was made based off the regular btree operations. I need this to go through all the keys in order, and then print the values based off the keys. 
+
+## 9:22pm 12/10/2025
+The .csv files are honestly not as bad as I thought, it acts like regular file management. Make sure the file is valid or needs to be created first. Open the file if we are writing, write to the file with a writer, and keep going. If we're reading from a file, open the file, use a reader, and read the needed data, strip away excess information, and put it into the file.  
