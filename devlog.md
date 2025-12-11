@@ -45,3 +45,7 @@ The error is coming from the persistent file object opening only in read mode, a
 
 ## 10:56pm 12/10/2025
 I've adjusted so it closes whenever the read&write operation is called, so that it will not linger on those. This fixes the issue of not being able to read or write after performing some operations, and all commands now work smoothly. The terminal I was working with did not match this version, so I just completely replaced it with that version in my IDE. I'm going to write the final log and readme now. 
+
+## 10:58pm 12/10/2025
+The end of the project was pretty straightforward, and overall I felt like it made sense today. I think the file management wasn't as bad as I assumed it was, but I didn't mind it. The inorder transversal was necessary for the completion of other programs, and it's useful to have overall. Handling the command line arguments was repetitive, but it was also easy. Error handling was not that good, as it seemed more of a problem of my logic then the program not working. After the read operations were fixed, the testing of the program works with both files I made, and the file given to us. 
+
