@@ -1,3 +1,14 @@
+"""
+project3.py
+Usage examples:
+  python project3.py create test.idx
+  python project3.py insert test.idx 15 100
+  python project3.py search test.idx 15
+  python project3.py load test.idx input.csv
+  python project3.py print test.idx
+  python project3.py extract test.idx output.csv
+"""
+
 import sys
 import os
 import struct
@@ -15,15 +26,15 @@ children_num = 2 * min_degree   # 20
 # Header layout: offset 0: 8 bytes magic, offset 8: 8 bytes root block id (0 if empty), offset 16: 8 bytes next block id
 # unused for the rest of 512 bytes
 
-# Node layout: 8 bytes of their block id, 8 bytes parent's block id, 8 bytes number of pairs in this block, 152 bytes 19 keys corresponding to values in the next chuck of bytes 152 bytes of 19 values with keys in previous blocks 
+# Node layout: 8 bytes of their block id, 8 bytes parent's block id, 8 bytes number of pairs in this block, 152 bytes 19 keys corresponding to values in the next chuck of bytes 152 bytes of 19 values with keys in previous blocks
 # 160 bytes if 20 child pointers to the next files
-# rest unused 
+# rest unused
 
 def int_to_bytes(n):
-    return int(n).to_bytes(8, byteorder='big', signed=True) # signed = true allows negative keys to be used, but it will be converted to unsigned 
+    return int(n).to_bytes(8, byteorder='big', signed=True) # signed = true allows negative keys to be used, but it will be converted to unsigned
 
 def bytes_to_int(b):
-    return int.from_bytes(b, byteorder='big', signed=True) #opposite method to convert it from bytes, signed still has to be true 
+    return int.from_bytes(b, byteorder='big', signed=True) #opposite method to convert it from bytes, signed still has to be true
 
 class Node:
     #read node layout for what will we do with this
@@ -94,20 +105,27 @@ class BTreeFile:
 
     # simple file operations
     def openInrw(self):
-        if self.fp is None:
-            self.fp = open(self.path, 'r+b') #open the file path in read and write mode
+        if self.fp is not None:
+            try:
+                self.fp.close() #closes the file if not open
+            except Exception:
+                # ignore close errors, reopens anyways
+                pass
+            self.fp = None
+        # 'r+b' requires the file already exists, so it will either be created or not open
+        # the above checks if we can open it in read/write in binary mode
+        self.fp = open(self.path, 'r+b')#open the file path in read and write mode
 
     def openInro(self): #read only opening
-        if self.fp is None:
-            self.fp = open(self.path, 'rb')#simply opens it only in read only mode
+        return open(self.path, 'rb') #simply opens it only in read only mode
 
-    def close(self): #this will close the file if it is write mode for the most part, but I can use it for read only 
+    def close(self):
         if self.fp:
             self.fp.close()
-            self.fp = None #resets it after closing
-            
-    def _block_offset(self, block_id)
-        return block_id * byte_blocks
+            self.fp = None
+
+    def _block_offset(self, block_id):
+        return block_id * byte_blocks #converts the block id to an offest by multiplying it by the block size
 
     def readsHeader(self, must_exist=True):
         if not os.path.exists(self.path):
@@ -148,11 +166,11 @@ class BTreeFile:
         new_id = self.next_block #sets up the next node with the next block available
         self.next_block += 1 #increment for the next block
         node = Node(block_id=new_id) #makes a new node for what will happen next
-        self.write_node(node) # write node out and put it into the cache
+        self.writesNode(node) # write node out and put it into the cache
         self.writesHeader()# modify header so we can update next block
         return node
 
-# Node cache and creation
+    # Node cache and creation
 
     def _cache_put(self, node):
         bid = node.block_id #puts the node current id as the this one
@@ -194,7 +212,8 @@ class BTreeFile:
         # add node to cache (may evict other nodes)
         self._cache_put(node) #put the node in the cache
         return node # returns it
-# B-tree operations
+
+    # B-tree operations
     def create(self):
         if os.path.exists(self.path): #the file already exists, error below
             print("Error: file already exists", file=sys.stderr) #tell user it exists
@@ -253,7 +272,7 @@ class BTreeFile:
             self.writesHeader() #makes the header
             return #exit since we made the root node
 
-        root_node = self.readsNode(self.root) 
+        root_node = self.readsNode(self.root)
         if root_node.n == max_keys: #roots full, make a new one
             # we need to split up
             s = self.allocate_node() #allocate the new node
@@ -360,10 +379,10 @@ class BTreeFile:
             y.children[j] = 0
 
         # writes them to the disk
-        self.writesNode(y) 
+        self.writesNode(y)
         self.writesNode(z)
         self.writesNode(parent_node)
-    
+
     # Miscellanous things for operations other
     def _inorder_traverse(self, block_id, action):
         if block_id == 0: #root just back out
@@ -417,8 +436,9 @@ class BTreeFile:
                     sys.exit(1)
                 k = int(parts[0].strip()) # Converts key if it is a string and takes away blank space
                 v = int(parts[1].strip()) # Converts value if it is a string and takes away blank space
-                self.insert(k, v) #insert this into the index 
-        
+                self.insert(k, v) #insert this into the index
+
+# Command-line passing
 def usage_and_exit():
     print("Usage:")
     print("  project3.py create <indexfile>")
@@ -428,7 +448,7 @@ def usage_and_exit():
     print("  project3.py print <indexfile>")
     print("  project3.py extract <indexfile> <csvfile>")
     sys.exit(1)
-    
+
 def cmd_create(args): #argument for commands from the line
     if len(args) != 2: #if there are too many or not enough arguments, exit
         usage_and_exit()
