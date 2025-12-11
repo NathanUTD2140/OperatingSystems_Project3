@@ -39,3 +39,6 @@ This part was really repetitive, as it would just error handling, calling the fi
 
 ## 10:02pm 12/10/2025
 The program does not work as intended, as the print functions simply stop and says that it can no longer read the file, and stops trying to print it out or write to the output or insert correctly after a few attempts. Something is clearly going wrong with the read and writing operations of the files. I will look at these functions and hopefully fix them. 
+
+## 10:18pm 12/10/2025
+The error is coming from the persistent file object opening only in read mode, and this causes our program to not be able to write. We need to modify the read functions to accomodate writing to the files. I will adjust it to close all operations after it is done, or open a new instance when the functions are called. 
