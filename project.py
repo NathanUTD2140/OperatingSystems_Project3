@@ -363,7 +363,30 @@ class BTreeFile:
         self.writesNode(y) 
         self.writesNode(z)
         self.writesNode(parent_node)
+    
+    # Miscellanous things for operations other
+    def _inorder_traverse(self, block_id, action):
+        if block_id == 0: #root just back out
+            return
+        node = self.readsNode(block_id) #reads the node
+        for i in range(node.n): #loop through for number of keys here
+            child_bid = node.children[i] #see if there is any child
+            if child_bid != 0: #if there is an id here
+                self._inorder_traverse(child_bid, action) #recurse again
+            action(node.keys[i], node.values[i])
+        last_child = node.children[node.n]
+        if last_child != 0:
+            self._inorder_traverse(last_child, action) #recurse again
 
+    def printAll(self):
+        self.openAndLoadHeader() #makes sure its valid
+        if self.root == 0: # if there is nothing, empty
+            return
+        def printer(k, v): #function called printer
+            print(f"{k} {v}") #print the key and value
+        self._inorder_traverse(self.root, printer) #traverse in order
+
+    
 
 def usage_and_exit():
     print("Usage:")
